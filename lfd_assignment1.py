@@ -11,10 +11,12 @@ from sklearn.metrics import accuracy_score
 
 def create_arg_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-t", "--train_file", default='train.txt', type=str,
+    parser.add_argument("-tr", "--train_file", default='train.txt', type=str,
                         help="Train file to learn from (default train.txt)")
     parser.add_argument("-d", "--dev_file", default='dev.txt', type=str,
                         help="Dev file to evaluate on (default dev.txt)")
+    parser.add_argument("-ts", "--test_file", default='test.txt', type=str,
+                        help="Test file to test the system prediction quality")
     parser.add_argument("-s", "--sentiment", action="store_true",
                         help="Do sentiment analysis (2-class problem)")
     parser.add_argument("-tf", "--tfidf", action="store_true",
@@ -50,7 +52,8 @@ if __name__ == "__main__":
 
     # TODO: comment
     X_train, Y_train = read_corpus(args.train_file, args.sentiment)
-    X_test, Y_test = read_corpus(args.dev_file, args.sentiment)
+    X_dev, Y_dev = read_corpus(args.dev_file, args.sentiment)
+    X_test, Y_test = read_corpus(args.test_file, args.sentiment)
 
     # Convert the texts to vectors
     # We use a dummy function as tokenizer and preprocessor,
@@ -69,7 +72,7 @@ if __name__ == "__main__":
     # TODO: comment this
     classifier.fit(X_train, Y_train)
 
-    # TODO: comment this
+    # TODO: IT USES THE TEST DATA WHILE WE HAVE A DEV SET AS WELL!!!!!
     Y_pred = classifier.predict(X_test)
 
     # TODO: comment this
