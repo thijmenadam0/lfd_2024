@@ -4,6 +4,7 @@
 
 import argparse
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.metrics import precision_recall_fscore_support, f1_score, confusion_matrix, ConfusionMatrixDisplay
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score
@@ -55,6 +56,12 @@ if __name__ == "__main__":
     X_dev, Y_dev = read_corpus(args.dev_file, args.sentiment)
     X_test, Y_test = read_corpus(args.test_file, args.sentiment)
 
+    # Makes a list of unique ordered labels
+    unique_labels = []
+    for label in Y_test:
+        if label not in unique_labels:
+            unique_labels.append(label)
+
     # Convert the texts to vectors
     # We use a dummy function as tokenizer and preprocessor,
     # since the texts are already preprocessed and tokenized.
@@ -75,6 +82,22 @@ if __name__ == "__main__":
     # TODO: IT USES THE TEST DATA WHILE WE HAVE A DEV SET AS WELL!!!!!
     Y_pred = classifier.predict(X_test)
 
-    # TODO: comment this
+    # Calculates the accuracy score and the f1 score using sklearn
     acc = accuracy_score(Y_test, Y_pred)
+    f1 = f1_score(Y_test, Y_pred, average="macro")
+
+    # Calculates the confusion matrix using sklearn
+    cm = confusion_matrix(Y_test, Y_pred, labels=unique_labels)
+
+    # Calculates the other metrics.
+    metrics = precision_recall_fscore_support(Y_test, Y_pred, labels=unique_labels)
+
+    # TODO: Felt like this didn't need to be a function as it is just printing, if you think it needs to be a function we can fix that :)
+    for i in range(len(unique_labels)):
+        print(f"{unique_labels[i]} precision: {round(metrics[0][i], 3)}")
+        print(f"{unique_labels[i]} recall: {round(metrics[1][i], 3)}")
+        print(f"{unique_labels[i]} f1-score: {round(metrics[2][i], 3)} \n")
+
+    print(f"The Confusion Matrix: \n {cm} \n")
+    print(f"Macro Averaged f1-score: {round(f1, 3)}")
     print(f"Final accuracy: {acc}")
