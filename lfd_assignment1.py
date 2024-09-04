@@ -3,11 +3,37 @@
 '''TODO: add high-level description of this Python script'''
 
 import argparse
+
+from matplotlib import pyplot as plt
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.metrics import precision_recall_fscore_support, f1_score, confusion_matrix, ConfusionMatrixDisplay
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
+from sklearn.svm import SVC, LinearSVC
 from sklearn.metrics import accuracy_score
+
+
+def check_valid_gamma(value):
+    """
+    Check if the given value for gamma is valid.
+
+    Arguments:
+        value (str): The given gamma value.
+
+    returns:
+        string | float: The given gamma value.
+    """
+    if value in ['scale', 'auto']:
+        return value
+
+    try:
+        float_value = float(value)
+        if float_value > 0.0:
+            return float_value
+        else:
+            raise argparse.ArgumentTypeError(f"Given gamma: {value} is invalid, should be positive.")
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Given gamma: {value} is invalid, should be float or 'scale' or 'auto'.")
 
 
 def create_arg_parser():
@@ -22,12 +48,51 @@ def create_arg_parser():
                         help="Do sentiment analysis (2-class problem)")
     parser.add_argument("-tf", "--tfidf", action="store_true",
                         help="Use the TF-IDF vectorizer instead of CountVectorizer")
+    parser.add_argument("-cm", "--confusion_matrix", action="store_true",
+                        help="Show extended confusion matrix")
+
+    # Creating a subparser allows us to set arguments for hyperparameters per algorithm.
+    subparser = parser.add_subparsers(dest="algorithm", required=False,
+                                      help="Choose the classifying algorithm to use")
+
+    # Subparser for SVM.
+    svm_parser = subparser.add_parser("svm",
+                                      help="Use Support Vector Machine as classifier")
+    svm_parser.add_argument("-c", "--C", default=1.0, type=float,
+                            help="Set the regularization parameter C of SVM")
+    svm_parser.add_argument("-g", "--gamma", default='scale', type=check_valid_gamma,
+                            help="Set gamma value, can be scale, auto or positive float.")
+    svm_parser.add_argument("-sh", "--shape", choices=["ovo", "ovr"], default="ovr",
+                            help="Set the decision function shape, one-versus-one or one-versus-rest")
+
+    # Subparser for Linear SVM
+    svml_parser = subparser.add_parser("svml",
+                                       help="Use Linear kernel Support Vector Machine as classifier")
+    svml_parser.add_argument("-c", "--C", default=1.0, type=float,
+                             help="Set the regularization parameter C of Linear SVM")
+    svml_parser.add_argument("-p", "--penalty", choices=["l1", "l2"], default="l2",
+                             help="Set the penalty parameter for Linear SVM")
+    svml_parser.add_argument("-l", "--loss", choices=["hinge", "squared_hinge"], default="squared_hinge",
+                             help="Set the loss parameter for Linear SVM, using hinge and penalty l1 is not supported "
+                                  "by model")
+
     args = parser.parse_args()
     return args
 
 
 def read_corpus(corpus_file, use_sentiment):
-    '''TODO: add function description'''
+    """
+    Load a given file and create a list of lists of the documents as tokens and a list of labels.
+    
+    Arguments:
+        corpus_file (str): Path to the corpus file to load.
+        use_sentiment (bool): Bool whether to use sentiment analysis or not.
+    
+    Returns:
+        list: List of lists of documents as tokens.
+        list: List of labels.
+
+    """
     documents = []
     labels = []
     with open(corpus_file, encoding='utf-8') as in_file:
@@ -46,6 +111,17 @@ def read_corpus(corpus_file, use_sentiment):
 def identity(inp):
     '''Dummy function that just returns the input'''
     return inp
+
+
+def show_confusion_matrix(disp):
+    """
+    Show a detailed confusion matrix.
+
+    Arguments:
+        disp (ConfusionMatrixDisplay): The confusion matrix to show.
+    """
+    disp.plot()
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -71,10 +147,17 @@ if __name__ == "__main__":
         # Bag of Words vectorizer
         vec = CountVectorizer(preprocessor=identity, tokenizer=identity)
 
+    algorithm = MultinomialNB()
+
+    if args.algorithm == "svm":
+        algorithm = SVC(C=args.C, gamma=args.gamma, decision_function_shape=args.shape)
+    elif args.algorithm == "svml":
+        algorithm = LinearSVC(C=args.C, penalty=args.penalty, loss=args.loss)
+
     # Combine the vectorizer with a Naive Bayes classifier
     # Of course you have to experiment with different classifiers
     # You can all find them through the sklearn library
-    classifier = Pipeline([('vec', vec), ('cls', MultinomialNB())])
+    classifier = Pipeline([('vec', vec), ('cls', algorithm)])
 
     # TODO: comment this
     classifier.fit(X_train, Y_train)
@@ -89,6 +172,10 @@ if __name__ == "__main__":
     # Calculates the confusion matrix using sklearn
     cm = confusion_matrix(Y_test, Y_pred, labels=unique_labels)
 
+    # Add labels to confusion matrix.
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm,
+                                  display_labels=unique_labels)
+
     # Calculates the other metrics.
     metrics = precision_recall_fscore_support(Y_test, Y_pred, labels=unique_labels)
 
@@ -101,3 +188,6 @@ if __name__ == "__main__":
     print(f"The Confusion Matrix: \n {cm} \n")
     print(f"Macro Averaged f1-score: {round(f1, 3)}")
     print(f"Final accuracy: {acc}")
+
+    if args.confusion_matrix:
+        show_confusion_matrix(disp)
