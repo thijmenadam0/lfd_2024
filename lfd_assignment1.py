@@ -56,6 +56,11 @@ def create_arg_parser():
     parser.add_argument("-cm", "--confusion_matrix", action="store_true",
                         help="Show extended confusion matrix")
 
+    parser.add_argument("-a", "--alpha", default=1.0, type=float,
+                        help="Set the alpha for the base Naive Bayes classifier")
+    
+
+
     # Creating a subparser allows us to set arguments for hyperparameters per algorithm.
     subparser = parser.add_subparsers(dest="algorithm", required=False,
                                       help="Choose the classifying algorithm to use")
@@ -102,7 +107,8 @@ def create_arg_parser():
                             help="Set the weight function used in the prediction.")
     # 1 chooses the Manhattan distance, 2 chooses the Euclidean distance.
     knn_parser.add_argument("-p", "--distance", choices=[1, 2], default=2, type=int,
-                            help="Set the distance metric.")
+                            help="Set the distance metric. 1 is the Manhattan distance, "
+                            "2 is the Euclidean distance.")
 
     # Parent parser containing the overlapping arguments for Decision Tree and Random Forest
     parent_parser = argparse.ArgumentParser(add_help=False)
@@ -199,7 +205,7 @@ if __name__ == "__main__":
         # Bag of Words vectorizer
         vec = CountVectorizer(preprocessor=identity, tokenizer=identity)
 
-    algorithm = MultinomialNB()
+    algorithm = MultinomialNB(alpha=args.alpha)
 
     # Best setup C=3, gamma=scale, decision_shape_function=ovr
     if args.algorithm == "svm":
