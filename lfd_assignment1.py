@@ -5,6 +5,8 @@
 import argparse
 
 from matplotlib import pyplot as plt
+
+from sklearn.dummy import DummyClassifier
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.metrics import precision_recall_fscore_support, f1_score, confusion_matrix, ConfusionMatrixDisplay
 from sklearn.naive_bayes import MultinomialNB
@@ -58,6 +60,12 @@ def create_arg_parser():
     subparser = parser.add_subparsers(dest="algorithm", required=False,
                                       help="Choose the classifying algorithm to use")
 
+    # Subparser for dummy baseline.
+    dummy_parser = subparser.add_parser("dummy",
+                                        help="Dummy classifier.")
+    dummy_parser.add_argument("-ds", "--dummy_strategy", choices=["most_frequent", "prior", "stratified", "uniform"],
+                              default="prior", )
+
     # Subparser for SVM.
     svm_parser = subparser.add_parser("svm",
                                       help="Use Support Vector Machine as classifier")
@@ -67,6 +75,11 @@ def create_arg_parser():
                             help="Set gamma value, can be scale, auto or positive float.")
     svm_parser.add_argument("-sh", "--shape", choices=["ovo", "ovr"], default="ovr",
                             help="Set the decision function shape, one-versus-one or one-versus-rest")
+    svm_parser.add_argument("-k", "--kernel", choices=["linear", "poly", "rbf", "sigmoid"],
+                            default="rbf",
+                            help="Set the kernel, linear is already used by Linear SVM")
+    svm_parser.add_argument("-dg", "--degree", default=3, type=int,
+                            help="Set the degree, only works for poly kernel")
 
     # Subparser for Linear SVM
     svml_parser = subparser.add_parser("svml",
@@ -78,7 +91,7 @@ def create_arg_parser():
     svml_parser.add_argument("-l", "--loss", choices=["hinge", "squared_hinge"], default="squared_hinge",
                              help="Set the loss parameter for Linear SVM, using hinge and penalty l1 is not supported "
                                   "by model")
-    
+
     # Subparser for K-Nearest Neighbors
     knn_parser = subparser.add_parser("knn",
                                       help="Use K-Nearest Neighbours algorithm as classifier")
@@ -86,23 +99,21 @@ def create_arg_parser():
                             help="Set the amount of neighbors for the KNN classifier")
     # TODO: Distance seems to be the better weight, but it is not the default.
     knn_parser.add_argument("-w", "--weight", choices=["uniform", "distance"], default="uniform",
-                             help="Set the weight function used in the prediction.")
+                            help="Set the weight function used in the prediction.")
     # 1 chooses the Manhattan distance, 2 chooses the Euclidean distance.
     knn_parser.add_argument("-p", "--distance", choices=[1, 2], default=2, type=int,
-                             help="Set the distance metric.")
-
+                            help="Set the distance metric.")
 
     # Parent parser containing the overlapping arguments for Decision Tree and Random Forest
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument("-c", "--criterion", choices=["gini", "entropy", "log_loss"],
-                              default="gini", help="Assign the fuction to measure the split quality")
+                               default="gini", help="Assign the fuction to measure the split quality")
     parent_parser.add_argument("-md", "--max_depth", default=None, type=int,
-                             help="Set the maximum depth of the tree")
+                               help="Set the maximum depth of the tree")
     parent_parser.add_argument("-mss", "--min_samples_split", default=2, type=int,
-                             help="Set the minimum number of samples required to split an internal node")
+                               help="Set the minimum number of samples required to split an internal node")
     parent_parser.add_argument("-msl", "--min_samples_leaf", default=1, type=int,
-                             help="Set the minimum number of samples per leaf node")
-
+                               help="Set the minimum number of samples per leaf node")
 
     # Subparser for Decision Tree Classifier
     tree_parser = subparser.add_parser("dt", parents=[parent_parser],
@@ -110,8 +121,7 @@ def create_arg_parser():
     tree_parser.add_argument("-s", "--splitter", choices=["best", "random"], default="best",
                              help="Set the strategy used to choose the split of each node")
 
-
-    #Subparser for Random Forest Classifier
+    # Subparser for Random Forest Classifier
     forest_parser = subparser.add_parser("rf", parents=[parent_parser],
                                          help="Use Random Forest algorithm as classifier")
     forest_parser.add_argument("-n", "--n_estimators", default=100, type=int,
@@ -170,7 +180,7 @@ if __name__ == "__main__":
 
     # TODO: comment
     X_train, Y_train = read_corpus(args.train_file, args.sentiment)
-    X_test, Y_test = read_corpus(args.dev_file, args.sentiment) # use dev set as test set for now
+    X_test, Y_test = read_corpus(args.dev_file, args.sentiment)  # use dev set as test set for now
     # X_dev, Y_dev = read_corpus(args.dev_file, args.sentiment)
     # X_test, Y_test = read_corpus(args.test_file, args.sentiment)
 
@@ -191,10 +201,15 @@ if __name__ == "__main__":
 
     algorithm = MultinomialNB()
 
+    # Best setup C=3, gamma=scale, decision_shape_function=ovr
     if args.algorithm == "svm":
-        algorithm = SVC(C=args.C, gamma=args.gamma, decision_function_shape=args.shape)
+        algorithm = SVC(C=args.C, gamma=args.gamma, decision_function_shape=args.shape, kernel=args.kernel,
+                        degree=args.degree)
+
+    # Best setup C=0.7, penalty=l2, loss=squared_loss
     elif args.algorithm == "svml":
         algorithm = LinearSVC(C=args.C, penalty=args.penalty, loss=args.loss)
+
     elif args.algorithm == "knn":
         algorithm = KNeighborsClassifier(n_neighbors=args.neighbors, weights=args.weight, p=args.distance)
     elif args.algorithm == "dt":
@@ -203,6 +218,9 @@ if __name__ == "__main__":
                                            min_samples_leaf=args.min_samples_leaf)
     elif args.algorithm == "rf":
         algorithm = RandomForestClassifier()
+
+    elif args.algorithm == "dummy":
+        algorithm = DummyClassifier(strategy=args.dummy_strategy)
 
     # Combine the vectorizer with a Naive Bayes classifier
     # Of course you have to experiment with different classifiers
@@ -223,8 +241,7 @@ if __name__ == "__main__":
     cm = confusion_matrix(Y_test, Y_pred, labels=unique_labels)
 
     # Add labels to confusion matrix.
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm,
-                                  display_labels=unique_labels)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=unique_labels)
 
     # Calculates the other metrics.
     metrics = precision_recall_fscore_support(Y_test, Y_pred, labels=unique_labels)
