@@ -11,6 +11,8 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC, LinearSVC
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 
 
@@ -89,6 +91,32 @@ def create_arg_parser():
     knn_parser.add_argument("-p", "--distance", choices=[1, 2], default=2, type=int,
                              help="Set the distance metric.")
 
+
+    # Parent parser containing the overlapping arguments for Decision Tree and Random Forest
+    parent_parser = argparse.ArgumentParser(add_help=False)
+    parent_parser.add_argument("-c", "--criterion", choices=["gini", "entropy", "log_loss"],
+                              default="gini", help="Assign the fuction to measure the split quality")
+    parent_parser.add_argument("-md", "--max_depth", default=None, type=int,
+                             help="Set the maximum depth of the tree")
+    parent_parser.add_argument("-mss", "--min_samples_split", default=2, type=int,
+                             help="Set the minimum number of samples required to split an internal node")
+    parent_parser.add_argument("-msl", "--min_samples_leaf", default=1, type=int,
+                             help="Set the minimum number of samples per leaf node")
+
+
+    # Subparser for Decision Tree Classifier
+    tree_parser = subparser.add_parser("dt", parents=[parent_parser],
+                                       help="Use Decision Tree algorithm as classifier")
+    tree_parser.add_argument("-s", "--splitter", choices=["best", "random"], default="best",
+                             help="Set the strategy used to choose the split of each node")
+
+
+    #Subparser for Random Forest Classifier
+    forest_parser = subparser.add_parser("rf", parents=[parent_parser],
+                                         help="Use Random Forest algorithm as classifier")
+    forest_parser.add_argument("-n", "--n_estimators", default=100, type=int,
+                               help="Sets the number of trees in the forest")
+
     args = parser.parse_args()
     return args
 
@@ -142,8 +170,9 @@ if __name__ == "__main__":
 
     # TODO: comment
     X_train, Y_train = read_corpus(args.train_file, args.sentiment)
-    X_dev, Y_dev = read_corpus(args.dev_file, args.sentiment)
-    X_test, Y_test = read_corpus(args.test_file, args.sentiment)
+    X_test, Y_test = read_corpus(args.dev_file, args.sentiment) # use dev set as test set for now
+    # X_dev, Y_dev = read_corpus(args.dev_file, args.sentiment)
+    # X_test, Y_test = read_corpus(args.test_file, args.sentiment)
 
     # Makes a list of unique ordered labels
     unique_labels = []
@@ -168,6 +197,12 @@ if __name__ == "__main__":
         algorithm = LinearSVC(C=args.C, penalty=args.penalty, loss=args.loss)
     elif args.algorithm == "knn":
         algorithm = KNeighborsClassifier(n_neighbors=args.neighbors, weights=args.weight, p=args.distance)
+    elif args.algorithm == "dt":
+        algorithm = DecisionTreeClassifier(criterion=args.criterion, max_depth=args.max_depth,
+                                           min_samples_split=args.min_samples_split,
+                                           min_samples_leaf=args.min_samples_leaf)
+    elif args.algorithm == "rf":
+        algorithm = RandomForestClassifier()
 
     # Combine the vectorizer with a Naive Bayes classifier
     # Of course you have to experiment with different classifiers
