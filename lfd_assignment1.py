@@ -217,7 +217,9 @@ if __name__ == "__main__":
                                            min_samples_split=args.min_samples_split,
                                            min_samples_leaf=args.min_samples_leaf)
     elif args.algorithm == "rf":
-        algorithm = RandomForestClassifier()
+        algorithm = RandomForestClassifier(n_estimators=args.n_estimators, criterion=args.criterion,
+                                           max_depth=args.max_depth, min_samples_split=args.min_samples_split,
+                                           min_samples_leaf=args.min_samples_leaf)
 
     elif args.algorithm == "dummy":
         algorithm = DummyClassifier(strategy=args.dummy_strategy)
