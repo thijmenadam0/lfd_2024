@@ -10,6 +10,7 @@ from sklearn.metrics import precision_recall_fscore_support, f1_score, confusion
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC, LinearSVC
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score
 
 
@@ -75,6 +76,18 @@ def create_arg_parser():
     svml_parser.add_argument("-l", "--loss", choices=["hinge", "squared_hinge"], default="squared_hinge",
                              help="Set the loss parameter for Linear SVM, using hinge and penalty l1 is not supported "
                                   "by model")
+    
+    # Subparser for K-Nearest Neighbors
+    knn_parser = subparser.add_parser("knn",
+                                      help="Use K-Nearest Neighbours algorithm as classifier")
+    knn_parser.add_argument("-n", "--neighbors", default=5, type=int,
+                            help="Set the amount of neighbors for the KNN classifier")
+    # TODO: Distance seems to be the better weight, but it is not the default.
+    knn_parser.add_argument("-w", "--weight", choices=["uniform", "distance"], default="uniform",
+                             help="Set the weight function used in the prediction.")
+    # 1 chooses the Manhattan distance, 2 chooses the Euclidean distance.
+    knn_parser.add_argument("-p", "--distance", choices=[1, 2], default=2, type=int,
+                             help="Set the distance metric.")
 
     args = parser.parse_args()
     return args
@@ -153,6 +166,8 @@ if __name__ == "__main__":
         algorithm = SVC(C=args.C, gamma=args.gamma, decision_function_shape=args.shape)
     elif args.algorithm == "svml":
         algorithm = LinearSVC(C=args.C, penalty=args.penalty, loss=args.loss)
+    elif args.algorithm == "knn":
+        algorithm = KNeighborsClassifier(n_neighbors=args.neighbors, weights=args.weight, p=args.distance)
 
     # Combine the vectorizer with a Naive Bayes classifier
     # Of course you have to experiment with different classifiers
