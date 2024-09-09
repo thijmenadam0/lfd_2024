@@ -172,7 +172,10 @@ def read_corpus(corpus_file, use_sentiment):
 
 
 def identity(inp):
-    '''Dummy function that just returns the input'''
+    '''
+    Returns the input, or the lemmatized input if
+    the user has chosen lemmatization.
+    '''
 
     if args.lemmas:
         lemmatizer = WordNetLemmatizer()
