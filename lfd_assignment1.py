@@ -222,11 +222,11 @@ if __name__ == "__main__":
     elif args.algorithm == "dt":
         algorithm = DecisionTreeClassifier(criterion=args.criterion, max_depth=args.max_depth,
                                            min_samples_split=args.min_samples_split,
-                                           min_samples_leaf=args.min_samples_leaf)
+                                           min_samples_leaf=args.min_samples_leaf, random_state=10)
     elif args.algorithm == "rf":
         algorithm = RandomForestClassifier(n_estimators=args.n_estimators, criterion=args.criterion,
                                            max_depth=args.max_depth, min_samples_split=args.min_samples_split,
-                                           min_samples_leaf=args.min_samples_leaf)
+                                           min_samples_leaf=args.min_samples_leaf, random_state=10)
 
     elif args.algorithm == "dummy":
         algorithm = DummyClassifier(strategy=args.dummy_strategy)
