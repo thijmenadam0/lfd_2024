@@ -21,8 +21,6 @@ from sklearn.metrics import accuracy_score
 random.seed(10)
 
 
-random.seed(10)
-
 def check_valid_gamma(value):
     """
     Check if the given value for gamma is valid.
