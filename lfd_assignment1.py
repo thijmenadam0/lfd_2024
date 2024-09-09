@@ -4,6 +4,7 @@
 
 import argparse
 import random
+import numpy as np
 
 from matplotlib import pyplot as plt
 
@@ -54,6 +55,8 @@ def create_arg_parser():
                         help="Test file to test the system prediction quality")
     parser.add_argument("-s", "--sentiment", action="store_true",
                         help="Do sentiment analysis (2-class problem)")
+    parser.add_argument("-ubf", "--use_both_features", action="store_true", #!!!
+                        help="Enable the use of both features for the model training")
     parser.add_argument("-vec", "--vectorizer", choices=["bow", "tfidf", "both"],
                         default="bow", help="Select vectorizer: bow (bag of words), tfidf or both")
     parser.add_argument("-cm", "--confusion_matrix", action="store_true",
@@ -140,7 +143,7 @@ def create_arg_parser():
     return args
 
 
-def read_corpus(corpus_file, use_sentiment):
+def read_corpus(corpus_file, use_sentiment, use_both_features=False):
     """
     Load a given file and create a list of lists of the documents as tokens and a list of labels.
     
@@ -158,13 +161,19 @@ def read_corpus(corpus_file, use_sentiment):
     with open(corpus_file, encoding='utf-8') as in_file:
         for line in in_file:
             tokens = line.strip().split()
-            documents.append(tokens[3:])
             if use_sentiment:
                 # 2-class problem: positive vs negative
                 labels.append(tokens[1])
+                if use_both_features:
+                    documents.append(np.hstack((tokens[3:], tokens[0])))
             else:
                 # 6-class problem: books, camera, dvd, health, music, software
                 labels.append(tokens[0])
+                if use_both_features:
+                    documents.append(np.hstack((tokens[3:], tokens[1])))
+            if not use_both_features:
+                documents.append(tokens[3:])
+
     return documents, labels
 
 
@@ -188,8 +197,8 @@ if __name__ == "__main__":
     args = create_arg_parser()
 
     # TODO: comment
-    X_train, Y_train = read_corpus(args.train_file, args.sentiment)
-    X_test, Y_test = read_corpus(args.dev_file, args.sentiment)  # use dev set as test set for now
+    X_train, Y_train = read_corpus(args.train_file, args.sentiment, args.use_both_features)
+    X_test, Y_test = read_corpus(args.dev_file, args.sentiment, args.use_both_features)  # use dev set as test set for now
     # X_dev, Y_dev = read_corpus(args.dev_file, args.sentiment)
     # X_test, Y_test = read_corpus(args.test_file, args.sentiment)
 
