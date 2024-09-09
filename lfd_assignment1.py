@@ -6,6 +6,7 @@ import argparse
 import random
 
 from matplotlib import pyplot as plt
+from nltk.stem import WordNetLemmatizer
 
 from sklearn.dummy import DummyClassifier
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
@@ -60,6 +61,8 @@ def create_arg_parser():
                         help="Show extended confusion matrix")
     parser.add_argument("-ng", "--ngram_range", nargs=2, type=int, default=(1, 1),
                         help="Set the ngram range, give two integers separated by space")
+    parser.add_argument("-l", "--lemmas", action="store_true",
+                        help="Lemmatizes the tokenized data.")
 
     parser.add_argument("-a", "--alpha", default=1.0, type=float,
                         help="Set the alpha for the base Naive Bayes classifier")
@@ -170,6 +173,13 @@ def read_corpus(corpus_file, use_sentiment):
 
 def identity(inp):
     '''Dummy function that just returns the input'''
+
+    if args.lemmas:
+        lemmatizer = WordNetLemmatizer()
+        lemma_list = [lemmatizer.lemmatize(word) for word in inp]
+
+        return lemma_list
+
     return inp
 
 
@@ -201,7 +211,8 @@ if __name__ == "__main__":
 
     # Convert the texts to vectors
     # We use a dummy function as tokenizer and preprocessor,
-    # since the texts are already preprocessed and tokenized.
+    # since the texts are already preprocessed and tokenized.'
+
     tf_idf = TfidfVectorizer(preprocessor=identity, tokenizer=identity, ngram_range=tuple(args.ngram_range))
     bow = CountVectorizer(preprocessor=identity, tokenizer=identity, ngram_range=tuple(args.ngram_range))
     union = FeatureUnion([("count", bow), ("tf", tf_idf)])
