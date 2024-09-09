@@ -11,7 +11,7 @@ from sklearn.dummy import DummyClassifier
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.metrics import precision_recall_fscore_support, f1_score, confusion_matrix, ConfusionMatrixDisplay
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.svm import SVC, LinearSVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
@@ -54,10 +54,12 @@ def create_arg_parser():
                         help="Test file to test the system prediction quality")
     parser.add_argument("-s", "--sentiment", action="store_true",
                         help="Do sentiment analysis (2-class problem)")
-    parser.add_argument("-tf", "--tfidf", action="store_true",
-                        help="Use the TF-IDF vectorizer instead of CountVectorizer")
+    parser.add_argument("-vec", "--vectorizer", choices=["bow", "tfidf", "both"],
+                        default="bow", help="Select vectorizer: bow (bag of words), tfidf or both")
     parser.add_argument("-cm", "--confusion_matrix", action="store_true",
                         help="Show extended confusion matrix")
+    parser.add_argument("-ng", "--ngram_range", nargs=2, type=int, default=(1, 1),
+                        help="Set the ngram range, give two integers separated by space")
 
     parser.add_argument("-a", "--alpha", default=1.0, type=float,
                         help="Set the alpha for the base Naive Bayes classifier")
@@ -200,11 +202,19 @@ if __name__ == "__main__":
     # Convert the texts to vectors
     # We use a dummy function as tokenizer and preprocessor,
     # since the texts are already preprocessed and tokenized.
-    if args.tfidf:
-        vec = TfidfVectorizer(preprocessor=identity, tokenizer=identity)
-    else:
+    tf_idf = TfidfVectorizer(preprocessor=identity, tokenizer=identity, ngram_range=tuple(args.ngram_range))
+    bow = CountVectorizer(preprocessor=identity, tokenizer=identity, ngram_range=tuple(args.ngram_range))
+    union = FeatureUnion([("count", bow), ("tf", tf_idf)])
+
+    if args.vectorizer == "tfidf":
+        # TF-IDF vectorizer
+        vec = tf_idf
+    elif args.vectorizer == "bow":
         # Bag of Words vectorizer
-        vec = CountVectorizer(preprocessor=identity, tokenizer=identity)
+        vec = bow
+    elif args.vectorizer == "both":
+        # Use BoW and TF-IDF vectorizers.
+        vec = union
 
     algorithm = MultinomialNB(alpha=args.alpha)
 
