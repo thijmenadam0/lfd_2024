@@ -3,6 +3,7 @@
 '''TODO: add high-level description of this Python script'''
 
 import argparse
+import random
 
 from matplotlib import pyplot as plt
 
@@ -16,6 +17,8 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
+
+random.seed(10)
 
 
 def check_valid_gamma(value):
@@ -58,8 +61,6 @@ def create_arg_parser():
 
     parser.add_argument("-a", "--alpha", default=1.0, type=float,
                         help="Set the alpha for the base Naive Bayes classifier")
-    
-
 
     # Creating a subparser allows us to set arguments for hyperparameters per algorithm.
     subparser = parser.add_subparsers(dest="algorithm", required=False,
@@ -108,7 +109,7 @@ def create_arg_parser():
     # 1 chooses the Manhattan distance, 2 chooses the Euclidean distance.
     knn_parser.add_argument("-p", "--distance", choices=[1, 2], default=2, type=int,
                             help="Set the distance metric. 1 is the Manhattan distance, "
-                            "2 is the Euclidean distance.")
+                                 "2 is the Euclidean distance.")
 
     # Parent parser containing the overlapping arguments for Decision Tree and Random Forest
     parent_parser = argparse.ArgumentParser(add_help=False)
