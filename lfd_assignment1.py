@@ -47,6 +47,9 @@ def check_valid_gamma(value):
 
 
 def create_arg_parser():
+    """
+    Create an ArgumentParser to read the command line arguments. This includes subparsers for the different models
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("-tr", "--train_file", default='train.txt', type=str,
                         help="Train file to learn from (default train.txt)")
@@ -181,10 +184,10 @@ def read_corpus(corpus_file, use_sentiment, use_both_features=False):
 
 
 def identity(inp):
-    '''
+    """
     Returns the input, or the lemmatized input if
     the user has chosen lemmatization.
-    '''
+    """
 
     if args.lemmas:
         lemmatizer = WordNetLemmatizer()
@@ -206,6 +209,61 @@ def show_confusion_matrix(disp):
     plt.show()
 
 
+def select_vectorizer(arguments):
+    """
+    Initialize the vectorizer based on the given arguments.
+    """
+    # Initialize vectorizers with selected arguments.
+    tf_idf = TfidfVectorizer(preprocessor=identity, tokenizer=identity, ngram_range=tuple(arguments.ngram_range))
+    bow = CountVectorizer(preprocessor=identity, tokenizer=identity, ngram_range=tuple(arguments.ngram_range))
+    union = FeatureUnion([("count", bow), ("tf", tf_idf)])
+
+    if arguments.vectorizer == "tfidf":
+        # TF-IDF vectorizer
+        return tf_idf
+    elif arguments.vectorizer == "bow":
+        # Bag of Words vectorizer
+        return bow
+    elif arguments.vectorizer == "both":
+        # Use BoW and TF-IDF vectorizers.
+        return union
+
+
+def select_classifier(arguments):
+    """
+    Select the classifier and initialize it with the given arguments.
+    """
+    algorithm = MultinomialNB(alpha=arguments.alpha)
+
+    # Best setup C=3, gamma=scale, decision_shape_function=ovr
+    if arguments.algorithm == "svm":
+        algorithm = SVC(C=arguments.C, gamma=arguments.gamma, decision_function_shape=arguments.shape,
+                        kernel=arguments.kernel,
+                        degree=arguments.degree)
+
+    # Best setup C=0.7, penalty=l2, loss=squared_loss
+    elif arguments.algorithm == "svml":
+        algorithm = LinearSVC(C=arguments.C, penalty=arguments.penalty, loss=arguments.loss)
+
+    elif arguments.algorithm == "knn":
+        algorithm = KNeighborsClassifier(n_neighbors=arguments.neighbors, weights=arguments.weight,
+                                         p=arguments.distance)
+    elif arguments.algorithm == "dt":
+        algorithm = DecisionTreeClassifier(criterion=arguments.criterion, max_depth=arguments.max_depth,
+                                           min_samples_split=arguments.min_samples_split,
+                                           min_samples_leaf=arguments.min_samples_leaf, random_state=10)
+    elif arguments.algorithm == "rf":
+        algorithm = RandomForestClassifier(n_estimators=arguments.n_estimators, criterion=arguments.criterion,
+                                           max_depth=arguments.max_depth,
+                                           min_samples_split=arguments.min_samples_split,
+                                           min_samples_leaf=arguments.min_samples_leaf, random_state=10)
+
+    elif arguments.algorithm == "dummy":
+        algorithm = DummyClassifier(strategy=arguments.dummy_strategy)
+
+    return algorithm
+
+
 if __name__ == "__main__":
     args = create_arg_parser()
 
@@ -221,55 +279,16 @@ if __name__ == "__main__":
         if label not in unique_labels:
             unique_labels.append(label)
 
-    # Convert the texts to vectors
-    # We use a dummy function as tokenizer and preprocessor,
-    # since the texts are already preprocessed and tokenized.'
+    # Initialize vectorizer
+    vec = select_vectorizer(args)
 
-    tf_idf = TfidfVectorizer(preprocessor=identity, tokenizer=identity, ngram_range=tuple(args.ngram_range))
-    bow = CountVectorizer(preprocessor=identity, tokenizer=identity, ngram_range=tuple(args.ngram_range))
-    union = FeatureUnion([("count", bow), ("tf", tf_idf)])
+    # Initialize classifying algorithm
+    algorithm = select_classifier(args)
 
-    if args.vectorizer == "tfidf":
-        # TF-IDF vectorizer
-        vec = tf_idf
-    elif args.vectorizer == "bow":
-        # Bag of Words vectorizer
-        vec = bow
-    elif args.vectorizer == "both":
-        # Use BoW and TF-IDF vectorizers.
-        vec = union
-
-    algorithm = MultinomialNB(alpha=args.alpha)
-
-    # Best setup C=3, gamma=scale, decision_shape_function=ovr
-    if args.algorithm == "svm":
-        algorithm = SVC(C=args.C, gamma=args.gamma, decision_function_shape=args.shape, kernel=args.kernel,
-                        degree=args.degree)
-
-    # Best setup C=0.7, penalty=l2, loss=squared_loss
-    elif args.algorithm == "svml":
-        algorithm = LinearSVC(C=args.C, penalty=args.penalty, loss=args.loss)
-
-    elif args.algorithm == "knn":
-        algorithm = KNeighborsClassifier(n_neighbors=args.neighbors, weights=args.weight, p=args.distance)
-    elif args.algorithm == "dt":
-        algorithm = DecisionTreeClassifier(criterion=args.criterion, max_depth=args.max_depth,
-                                           min_samples_split=args.min_samples_split,
-                                           min_samples_leaf=args.min_samples_leaf, random_state=10)
-    elif args.algorithm == "rf":
-        algorithm = RandomForestClassifier(n_estimators=args.n_estimators, criterion=args.criterion,
-                                           max_depth=args.max_depth, min_samples_split=args.min_samples_split,
-                                           min_samples_leaf=args.min_samples_leaf, random_state=10)
-
-    elif args.algorithm == "dummy":
-        algorithm = DummyClassifier(strategy=args.dummy_strategy)
-
-    # Combine the vectorizer with a Naive Bayes classifier
-    # Of course you have to experiment with different classifiers
-    # You can all find them through the sklearn library
+    # Initialize the classifier pipeline by adding the vectorizer and algorithm.
     classifier = Pipeline([('vec', vec), ('cls', algorithm)])
 
-    # TODO: comment this
+    # Train classifier on given data.
     classifier.fit(X_train, Y_train)
 
     # TODO: IT USES THE TEST DATA WHILE WE HAVE A DEV SET AS WELL!!!!!
@@ -288,7 +307,7 @@ if __name__ == "__main__":
     # Calculates the other metrics.
     metrics = precision_recall_fscore_support(Y_test, Y_pred, labels=unique_labels)
 
-    # TODO: Felt like this didn't need to be a function as it is just printing, if you think it needs to be a function we can fix that :)
+    # Print metrics
     for i in range(len(unique_labels)):
         print(f"{unique_labels[i]} precision: {round(metrics[0][i], 3)}")
         print(f"{unique_labels[i]} recall: {round(metrics[1][i], 3)}")
