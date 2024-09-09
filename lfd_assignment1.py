@@ -3,6 +3,7 @@
 '''TODO: add high-level description of this Python script'''
 
 import argparse
+import random
 
 from matplotlib import pyplot as plt
 
@@ -17,6 +18,8 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 
+
+random.seed(10)
 
 def check_valid_gamma(value):
     """
