@@ -7,6 +7,8 @@ import random
 import numpy as np
 
 from matplotlib import pyplot as plt
+
+import nltk
 from nltk.stem import WordNetLemmatizer
 
 from sklearn.dummy import DummyClassifier
@@ -59,7 +61,7 @@ def create_arg_parser():
                         help="Test file to test the system prediction quality")
     parser.add_argument("-s", "--sentiment", action="store_true",
                         help="Do sentiment analysis (2-class problem)")
-    parser.add_argument("-ubf", "--use_both_features", action="store_true", #!!!
+    parser.add_argument("-ubf", "--use_both_features", action="store_true",  # !!!
                         help="Enable the use of both features for the model training")
     parser.add_argument("-vec", "--vectorizer", choices=["bow", "tfidf", "both"],
                         default="bow", help="Select vectorizer: bow (bag of words), tfidf or both")
@@ -265,11 +267,13 @@ def select_classifier(arguments):
 
 
 if __name__ == "__main__":
+    nltk.download('wordnet')
     args = create_arg_parser()
 
     # TODO: comment
     X_train, Y_train = read_corpus(args.train_file, args.sentiment, args.use_both_features)
-    X_test, Y_test = read_corpus(args.dev_file, args.sentiment, args.use_both_features)  # use dev set as test set for now
+    X_test, Y_test = read_corpus(args.dev_file, args.sentiment,
+                                 args.use_both_features)  # use dev set as test set for now
     # X_dev, Y_dev = read_corpus(args.dev_file, args.sentiment)
     # X_test, Y_test = read_corpus(args.test_file, args.sentiment)
 
