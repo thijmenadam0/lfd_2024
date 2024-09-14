@@ -22,7 +22,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 
-random.seed(10)
+#random.seed(10)
 
 
 def check_valid_gamma(value):
@@ -55,13 +55,13 @@ def create_arg_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("-tr", "--train_file", default='train.txt', type=str,
                         help="Train file to learn from (default train.txt)")
-    parser.add_argument("-d", "--dev_file", default='dev.txt', type=str,
+    parser.add_argument("-d", "--dev_file", type=str, default='dev.txt',
                         help="Dev file to evaluate on (default dev.txt)")
-    parser.add_argument("-ts", "--test_file", default='test.txt', type=str,
+    parser.add_argument("-te", "--test_file", type=str,
                         help="Test file to test the system prediction quality")
     parser.add_argument("-s", "--sentiment", action="store_true",
                         help="Do sentiment analysis (2-class problem)")
-    parser.add_argument("-ubf", "--use_both_features", action="store_true",  # !!!
+    parser.add_argument("-ubf", "--use_both_features", action="store_true",
                         help="Enable the use of both features for the model training")
     parser.add_argument("-vec", "--vectorizer", choices=["bow", "tfidf", "both"],
                         default="bow", help="Select vectorizer: bow (bag of words), tfidf or both")
@@ -272,10 +272,13 @@ if __name__ == "__main__":
 
     # TODO: comment
     X_train, Y_train = read_corpus(args.train_file, args.sentiment, args.use_both_features)
-    X_test, Y_test = read_corpus(args.dev_file, args.sentiment,
-                                 args.use_both_features)  # use dev set as test set for now
-    # X_dev, Y_dev = read_corpus(args.dev_file, args.sentiment)
-    # X_test, Y_test = read_corpus(args.test_file, args.sentiment)
+
+    # use test set otherwise TODO: maybe change it to elif
+    if args.test_file:
+        X_test, Y_test = read_corpus(args.test_file, args.sentiment, args.use_both_features)
+    # use the dev set otherwise
+    else:
+        X_test, Y_test = read_corpus(args.dev_file, args.sentiment, args.use_both_features)
 
     # Makes a list of unique ordered labels
     unique_labels = []
@@ -295,7 +298,6 @@ if __name__ == "__main__":
     # Train classifier on given data.
     classifier.fit(X_train, Y_train)
 
-    # TODO: IT USES THE TEST DATA WHILE WE HAVE A DEV SET AS WELL!!!!!
     Y_pred = classifier.predict(X_test)
 
     # Calculates the accuracy score and the f1 score using sklearn
