@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 
-'''TODO: add high-level description of this Python script'''
+"""
+This script allows users to select a machine learning algorithm, relevant
+hyperparameters and features to train and evaluate the model. Various arguments
+can be supplied by the user to select data or to show a confusion matrix.
+"""
 
 import argparse
 import random
@@ -22,7 +26,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 
-#random.seed(10)
+random.seed(10)
 
 
 def check_valid_gamma(value):
@@ -50,7 +54,7 @@ def check_valid_gamma(value):
 
 def create_arg_parser():
     """
-    Create an ArgumentParser to read the command line arguments. This includes subparsers for the different models
+    Create an ArgumentParser to read the command line arguments. This includes subparsers for the different models.
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("-tr", "--train_file", default='train.txt', type=str,
@@ -116,7 +120,7 @@ def create_arg_parser():
                                       help="Use K-Nearest Neighbours algorithm as classifier")
     knn_parser.add_argument("-n", "--neighbors", default=5, type=int,
                             help="Set the amount of neighbors for the KNN classifier")
-    # TODO: Distance seems to be the better weight, but it is not the default.
+
     knn_parser.add_argument("-w", "--weight", choices=["uniform", "distance"], default="uniform",
                             help="Set the weight function used in the prediction.")
     # 1 chooses the Manhattan distance, 2 chooses the Euclidean distance.
@@ -187,10 +191,9 @@ def read_corpus(corpus_file, use_sentiment, use_both_features=False):
 
 def identity(inp):
     """
-    Returns the input, or the lemmatized input if
-    the user has chosen lemmatization.
+    Returns the input, or the lemmatized input if the user has chosen
+    lemmatization.
     """
-
     if args.lemmas:
         lemmatizer = WordNetLemmatizer()
         lemma_list = [lemmatizer.lemmatize(word) for word in inp]
@@ -237,13 +240,11 @@ def select_classifier(arguments):
     """
     algorithm = MultinomialNB(alpha=arguments.alpha)
 
-    # Best setup C=3, gamma=scale, decision_shape_function=ovr
     if arguments.algorithm == "svm":
         algorithm = SVC(C=arguments.C, gamma=arguments.gamma, decision_function_shape=arguments.shape,
                         kernel=arguments.kernel,
                         degree=arguments.degree)
 
-    # Best setup C=0.7, penalty=l2, loss=squared_loss
     elif arguments.algorithm == "svml":
         algorithm = LinearSVC(C=arguments.C, penalty=arguments.penalty, loss=arguments.loss)
 
@@ -270,13 +271,12 @@ if __name__ == "__main__":
     nltk.download('wordnet')
     args = create_arg_parser()
 
-    # TODO: comment
+    # Generate features and labels for training .
     X_train, Y_train = read_corpus(args.train_file, args.sentiment, args.use_both_features)
 
-    # use test set otherwise TODO: maybe change it to elif
+    # Select either test or dev set for evaluation and generate features and labels.
     if args.test_file:
         X_test, Y_test = read_corpus(args.test_file, args.sentiment, args.use_both_features)
-    # use the dev set otherwise
     else:
         X_test, Y_test = read_corpus(args.dev_file, args.sentiment, args.use_both_features)
 
