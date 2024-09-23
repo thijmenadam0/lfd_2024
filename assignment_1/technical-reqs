@@ -1,0 +1,13 @@
+Create train/dev/test split and save to files. > Katja
+Add check if files already exist. If so, don't give error.
+
+Create measures (precision, recall, f1 score and confusion matrix). See https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_recall_fscore_support.html > Thijmen
+
+Implement, add baseline, experiment with hyperparameters and report about:
+    Decision Trees > Katja
+    Random Forest > Michiel?
+    KNN > Thijmen
+    SVM algorithms (use svm.SVC and svm.LinearSVC + explain difference) > Michiel
+
+Check baseline then for each model experiment with hyper parameters. Use best model for further stuff.
+Best baseline > best hyper parameters with model > best feature set for best model
