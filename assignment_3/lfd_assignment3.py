@@ -8,7 +8,7 @@ import argparse
 import numpy as np
 import logging
 from keras.models import Sequential
-from keras.layers import Dense, Embedding, LSTM
+from keras.layers import Dense, Embedding, LSTM, Dropout
 from keras.initializers import Constant
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelBinarizer
@@ -49,10 +49,14 @@ def create_arg_parser():
                         help="Set the loss function")
     parser.add_argument("-a", "--activation", default="softmax", type=str,
                         help="Set the activation")
+    parser.add_argument("-ah", "--activation_hidden", default="sigmoid", type=str,
+                        help="Set the activation for the hidden layer")
     parser.add_argument("-bs", "--batch_size", default=16, type=int,
                         help="Set the batch size")
     parser.add_argument("-ep", "--epochs", default=50, type=int,
                         help="Set the number of epochs")
+    parser.add_argument("-m", "--momentum", default=0.9, type=float,
+                        help="Controls the influence of previous epoch on the next weight update")
 
     args = parser.parse_args()
     return args
@@ -96,11 +100,18 @@ def get_emb_matrix(voc, emb):
 
 def create_model(Y_train, emb_matrix, args):
     """Create the Keras model to use"""
-    # Define settings, you might want to create cmd line args for them
+
+    # Define hyperparameter settings
     learning_rate = args.learning_rate
     loss_function = args.loss_function
+    decay_rate = learning_rate/args.epochs
+    momentum = args.momentum
     activation = args.activation
-    optim = SGD(learning_rate=learning_rate)
+
+    # Define the optimizer
+    optim = SGD(learning_rate=learning_rate, decay=decay_rate,
+                momentum=momentum, nesterov=False)
+
     # Take embedding dim and size from emb_matrix
     embedding_dim = len(emb_matrix[0])
     num_tokens = len(emb_matrix)
@@ -108,6 +119,7 @@ def create_model(Y_train, emb_matrix, args):
     # Now build the model
     model = Sequential()
     model.add(Embedding(num_tokens, embedding_dim, embeddings_initializer=Constant(emb_matrix), trainable=False))
+    # model.add(Dense(input_dim=embedding_dim, units=num_labels, activation=args.activation_hidden))
     # Add LSTM layer
     model.add(LSTM(embedding_dim))
     # Ultimately, end with dense layer with softmax
