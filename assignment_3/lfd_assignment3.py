@@ -178,6 +178,11 @@ def main():
         # Finally do the predictions
         test_set_predict(model, X_test_vect, Y_test_bin, "test")
 
+    print(f"-lr {args.learning_rate} -l {args.loss_function} -a {args.activation} -bg {args.batch_size} -ep"
+          f"{args.epochs}")
+    print(f"Number of layers: {len(model.layers)}")
+    print(model.summary())
+
 
 if __name__ == "__main__":
     main()
