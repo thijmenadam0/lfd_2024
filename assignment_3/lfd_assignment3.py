@@ -6,15 +6,26 @@ import random as python_random
 import json
 import argparse
 import numpy as np
+import logging
 from keras.models import Sequential
 from keras.layers import Dense, Embedding, LSTM
 from keras.initializers import Constant
-from pygments.lexer import default
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelBinarizer
 from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.layers import TextVectorization
 import tensorflow as tf
+
+# Setup logging configuration
+logging.basicConfig(filename='/content/gdrive/MyDrive/AS3/results.log', level=logging.INFO,
+                    format='%(asctime)s - %(message)s')
+
+# Custom function to log and print
+def log_and_print(message, printed=True):
+    """Logs a message and prints it to the console."""
+    logging.info(message)
+    if printed:
+        print(message)
 
 # Make reproducible as much as possible
 np.random.seed(1234)
@@ -133,7 +144,7 @@ def test_set_predict(model, X_test, Y_test, ident):
     Y_pred = np.argmax(Y_pred, axis=1)
     # If you have gold data, you can calculate accuracy
     Y_test = np.argmax(Y_test, axis=1)
-    print("Accuracy on own {1} set: {0}".format(round(accuracy_score(Y_test, Y_pred), 3), ident))
+    log_and_print("Accuracy on own {1} set: {0}".format(round(accuracy_score(Y_test, Y_pred), 3), ident))
 
 
 def main():
@@ -178,10 +189,9 @@ def main():
         # Finally do the predictions
         test_set_predict(model, X_test_vect, Y_test_bin, "test")
 
-    print(f"-lr {args.learning_rate} -l {args.loss_function} -a {args.activation} -bg {args.batch_size} -ep"
-          f"{args.epochs}")
-    print(f"Number of layers: {len(model.layers)}")
-    print(model.summary())
+    all_args = " \\\n".join([f" --{key}={value}" for key, value in vars(args).items() if value])
+    log_and_print(f"Used settings:\n{all_args}", False)
+    log_and_print(f"Model construction:\n{model.layers}\n", False)
 
 
 if __name__ == "__main__":
