@@ -14,7 +14,7 @@ from keras.src.optimizers import Adam
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelBinarizer
 from tensorflow.keras.optimizers import SGD
-from tensorflow.keras.layers import TextVectorization
+from tensorflow.keras.layers import TextVectorization, Bidirectional
 import tensorflow as tf
 
 # Setup logging configuration
@@ -42,6 +42,8 @@ def create_arg_parser():
                         help="Separate dev set to read in (default dev.txt)")
     parser.add_argument("-t", "--test_file", type=str,
                         help="If added, use trained model to predict on test set")
+    parser.add_argument("-bi", "--bidirectional", action="store_true",
+                        help="If added, use a bidirectional LSTM")
     parser.add_argument("-e", "--embeddings", default="glove_reviews.json", type=str,
                         help="Embedding file we are using (default glove_reviews.json)")
     parser.add_argument("-lr", "--learning_rate", default=0.01, type=float,
@@ -129,7 +131,12 @@ def create_model(Y_train, emb_matrix, args):
     model.add(Embedding(num_tokens, embedding_dim, embeddings_initializer=Constant(emb_matrix), trainable=False))
     # model.add(Dense(input_dim=embedding_dim, units=num_labels, activation=args.activation_hidden))
     # Add LSTM layer
-    model.add(LSTM(embedding_dim))
+
+    if args.bidirectional:
+        model.add(Bidirectional(LSTM(embedding_dim)))
+    else:
+        model.add(LSTM(embedding_dim))
+
     # Ultimately, end with dense layer with softmax
     model.add(Dense(input_dim=embedding_dim, units=num_labels, activation=activation))
 
