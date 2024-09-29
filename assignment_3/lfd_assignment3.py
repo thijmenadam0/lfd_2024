@@ -10,6 +10,7 @@ import logging
 from keras.models import Sequential
 from keras.layers import Dense, Embedding, LSTM, Dropout
 from keras.initializers import Constant
+from keras.src.optimizers import Adam
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelBinarizer
 from tensorflow.keras.optimizers import SGD
@@ -57,6 +58,10 @@ def create_arg_parser():
                         help="Set the number of epochs")
     parser.add_argument("-m", "--momentum", default=0.9, type=float,
                         help="Controls the influence of previous epoch on the next weight update")
+    parser.add_argument("-es", "--early_stop", default=3, type=int,
+                        help="Set the patience of early stop")
+    parser.add_argument("-o", "--optimizer", default="sgd", choices=["sgd", "adam"],
+                        help="Select optimizer (SGD, ADAM)")
 
     args = parser.parse_args()
     return args
@@ -111,6 +116,9 @@ def create_model(Y_train, emb_matrix, args):
     # Define the optimizer
     optim = SGD(learning_rate=learning_rate, decay=decay_rate,
                 momentum=momentum, nesterov=False)
+    if args.optimizer == "adam":
+        optim = Adam(learning_rate=learning_rate, decay=decay_rate)
+
 
     # Take embedding dim and size from emb_matrix
     embedding_dim = len(emb_matrix[0])
@@ -139,7 +147,7 @@ def train_model(model, X_train, Y_train, X_dev, Y_dev, args):
     epochs = args.epochs
     # Early stopping: stop training when there are three consecutive epochs without improving
     # It"s also possible to monitor the training loss with monitor="loss"
-    callback = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=3)
+    callback = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=args.early_stop)
     # Finally fit the model to our data
     model.fit(X_train, Y_train, verbose=verbose, epochs=epochs, callbacks=[callback], batch_size=batch_size,
               validation_data=(X_dev, Y_dev))
