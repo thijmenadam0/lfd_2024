@@ -16,6 +16,10 @@ from sklearn.preprocessing import LabelBinarizer
 from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.layers import TextVectorization, Bidirectional
 import tensorflow as tf
+from transformers import TFAutoModelForSequenceClassification
+from transformers import AutoTokenizer
+from tensorflow.keras.losses import CategoricalCrossentropy
+from tensorflow.keras.optimizers import Adam
 
 # Setup logging configuration
 logging.basicConfig(filename='/content/gdrive/MyDrive/AS3/results.log', level=logging.INFO,
@@ -66,6 +70,7 @@ def create_arg_parser():
                         help="Select optimizer (SGD, ADAM)")
     parser.add_argument("-dr", "--dropout", default=None, type=float,
                         help="Set a dropout layer")
+    parser.add_argument("-tr", "--transformer", default=None, choices=["distilbert", "roberta", "tweet-topic"])
 
     args = parser.parse_args()
     return args
@@ -201,16 +206,34 @@ def main():
     encoder = LabelBinarizer()
     Y_train_bin = encoder.fit_transform(Y_train)  # Use encoder.classes_ to find mapping back
     Y_dev_bin = encoder.fit_transform(Y_dev)
+    if args.transformer:
+        Y_train_bin = Y_train_bin.reshape(-1, 6)
+        Y_dev_bin = Y_dev_bin.reshape(-1, 6)
 
-    # Create model
-    model = create_model(Y_train, emb_matrix, args)
+        lm = "cardiffnlp/tweet-topic-21-multi"
+        tokenizer = AutoTokenizer.from_pretrained(lm)
+        model = TFAutoModelForSequenceClassification.from_pretrained(lm, num_labels=6)
+        tokens_train = tokenizer(X_train, padding=True, max_length=100,
+                                 truncation=True, return_tensors="np").data
+        tokens_dev = tokenizer(X_dev, padding=True, max_length=100,
+                               truncation=True, return_tensors="np").data
 
-    # Transform input to vectorized input
-    X_train_vect = vectorizer(np.array([[s] for s in X_train])).numpy()
-    X_dev_vect = vectorizer(np.array([[s] for s in X_dev])).numpy()
+        loss_function = CategoricalCrossentropy(from_logits=True)
+        optim = Adam(learning_rate=5e-5)
+        model.compile(loss=loss_function, optimizer=optim, metrics=["accuracy"])
+        model.fit(tokens_train, Y_train_bin, verbose=1, epochs=1,
+                  batch_size=8, validation_data=(tokens_dev, Y_dev_bin))
+        Y_pred = model.predict(tokens_dev)["logits"]
+    else:
+        # Create model
+        model = create_model(Y_train, emb_matrix, args)
 
-    # Train the model
-    model = train_model(model, X_train_vect, Y_train_bin, X_dev_vect, Y_dev_bin, args)
+        # Transform input to vectorized input
+        X_train_vect = vectorizer(np.array([[s] for s in X_train])).numpy()
+        X_dev_vect = vectorizer(np.array([[s] for s in X_dev])).numpy()
+
+        # Train the model
+        model = train_model(model, X_train_vect, Y_train_bin, X_dev_vect, Y_dev_bin, args)
 
     # Do predictions on specified test set
     if args.test_file:
