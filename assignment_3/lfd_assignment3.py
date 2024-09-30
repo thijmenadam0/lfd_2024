@@ -25,12 +25,14 @@ from tensorflow.keras.optimizers import Adam
 logging.basicConfig(filename='/content/gdrive/MyDrive/AS3/results.log', level=logging.INFO,
                     format='%(asctime)s - %(message)s')
 
+
 # Custom function to log and print
 def log_and_print(message, printed=True):
     """Logs a message and prints it to the console."""
     logging.info(message)
     if printed:
         print(message)
+
 
 # Make reproducible as much as possible
 np.random.seed(1234)
@@ -72,8 +74,7 @@ def create_arg_parser():
                         help="Set a dropout layer")
     parser.add_argument("-ex", "--extra_layer", default=0, type=int, choices=[1, 2],
                         help="Set an amount of extra layers, max 2 extra layers, keeps the same settings as the base layer.")
-
-    parser.add_argument("-tr", "--transformer", default=None, choices=["distilbert", "roberta", "tweet-topic"])
+    parser.add_argument("-tr", "--transformer", default=None, choices=["distilbert", "roberta", "electra"])
 
     args = parser.parse_args()
     return args
@@ -129,7 +130,6 @@ def create_model(Y_train, emb_matrix, args):
                 momentum=momentum, nesterov=False)
     if args.optimizer == "adam":
         optim = Adam(learning_rate=learning_rate)
-
 
     # Take embedding dim and size from emb_matrix
     embedding_dim = len(emb_matrix[0])
@@ -222,6 +222,31 @@ def test_set_predict(model, X_test, Y_test, ident):
     log_and_print("Accuracy on own {1} set: {0}".format(round(accuracy_score(Y_test, Y_pred), 3), ident))
 
 
+def predict_transformers(model, tokens_dev, Y_dev_bin):
+    """
+    Create prediction for the transformer
+    """
+    # Get predictions
+    Y_pred = model.predict(tokens_dev)["logits"]
+    # Finally, convert to numerical labels to get scores with sklearn
+    Y_pred = np.argmax(Y_pred, axis=1)
+    # If you have gold data, you can calculate accuracy
+    Y_test = np.argmax(Y_dev_bin, axis=1)
+    log_and_print("Accuracy on own {1} set: {0}".format(round(accuracy_score(Y_test, Y_pred), 3), "dev"))
+
+
+def compile_transformer(lm):
+    """
+    Compile transformer model
+    """
+    model = TFAutoModelForSequenceClassification.from_pretrained(lm, num_labels=6)
+    loss_function = CategoricalCrossentropy(from_logits=True)
+    optim = Adam(learning_rate=5e-5)
+    model.compile(loss=loss_function, optimizer=optim, metrics=["accuracy"])
+
+    return model
+
+
 def main():
     """Main function to train and test neural network given cmd line arguments"""
     args = create_arg_parser()
@@ -245,23 +270,34 @@ def main():
     Y_train_bin = encoder.fit_transform(Y_train)  # Use encoder.classes_ to find mapping back
     Y_dev_bin = encoder.fit_transform(Y_dev)
     if args.transformer:
-        Y_train_bin = Y_train_bin
-        Y_dev_bin = Y_dev_bin
-
-        lm = "cardiffnlp/tweet-topic-21-multi"
+        if args.transformer == "electra":
+            lm = "google/electra-small-discriminator"
+        elif args.transformer == "roberta":
+            lm = "FacebookAI/roberta-base"
+        else:
+            lm = "distilbert/distilbert-base-cased"
         tokenizer = AutoTokenizer.from_pretrained(lm)
-        model = TFAutoModelForSequenceClassification.from_pretrained(lm, num_labels=6)
-        tokens_train = tokenizer(X_train, padding=True, max_length=100,
-                                 truncation=True, return_tensors="np").data
-        tokens_dev = tokenizer(X_dev, padding=True, max_length=100,
-                               truncation=True, return_tensors="np").data
+        transformer_tokens_train = tokenizer(X_train, padding=True, max_length=100,
+                                             truncation=True, return_tensors="np").data
+        transformer_tokens_dev = tokenizer(X_dev, padding=True, max_length=100,
+                                           truncation=True, return_tensors="np").data
 
-        loss_function = CategoricalCrossentropy(from_logits=True)
-        optim = Adam(learning_rate=5e-5)
-        model.compile(loss=loss_function, optimizer=optim, metrics=["accuracy"])
-        model.fit(tokens_train, Y_train_bin, verbose=1, epochs=1,
-                  batch_size=8, validation_data=(tokens_dev, Y_dev_bin))
-        Y_pred = model.predict(tokens_dev)["logits"]
+        model = compile_transformer(lm)
+        model.fit(transformer_tokens_train, Y_train_bin, verbose=1, epochs=1,
+                  batch_size=8, validation_data=(transformer_tokens_dev, Y_dev_bin))
+        predict_transformers(model, transformer_tokens_dev, Y_dev_bin)
+
+        # Do predictions on specified test set
+        if args.test_file:
+            # Read in test set and vectorize
+            X_test, Y_test = read_corpus(args.test_file)
+            Y_test_bin = encoder.fit_transform(Y_test)
+            transformer_tokens_test = tokenizer(X_test, padding=True, max_length=100,
+                                                truncation=True, return_tensors="np").data
+            # Finally do the predictions
+            test_set_predict(model, transformer_tokens_test, Y_test_bin, "test")
+
+
     else:
         # Create model
         model = create_model(Y_train, emb_matrix, args)
@@ -273,14 +309,14 @@ def main():
         # Train the model
         model = train_model(model, X_train_vect, Y_train_bin, X_dev_vect, Y_dev_bin, args)
 
-    # Do predictions on specified test set
-    if args.test_file:
-        # Read in test set and vectorize
-        X_test, Y_test = read_corpus(args.test_file)
-        Y_test_bin = encoder.fit_transform(Y_test)
-        X_test_vect = vectorizer(np.array([[s] for s in X_test])).numpy()
-        # Finally do the predictions
-        test_set_predict(model, X_test_vect, Y_test_bin, "test")
+        # Do predictions on specified test set
+        if args.test_file:
+            # Read in test set and vectorize
+            X_test, Y_test = read_corpus(args.test_file)
+            Y_test_bin = encoder.fit_transform(Y_test)
+            X_test_vect = vectorizer(np.array([[s] for s in X_test])).numpy()
+            # Finally do the predictions
+            test_set_predict(model, X_test_vect, Y_test_bin, "test")
 
     all_args = " \\\n".join([f" --{key}={value}" for key, value in vars(args).items() if value])
     log_and_print(f"Used settings:\n{all_args}", False)
