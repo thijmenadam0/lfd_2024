@@ -70,6 +70,9 @@ def create_arg_parser():
                         help="Select optimizer (SGD, ADAM)")
     parser.add_argument("-dr", "--dropout", default=None, type=float,
                         help="Set a dropout layer")
+    parser.add_argument("-ex", "--extra_layer", default=0, type=int, choices=[1, 2],
+                        help="Set an amount of extra layers, max 2 extra layers, keeps the same settings as the base layer.")
+
     parser.add_argument("-tr", "--transformer", default=None, choices=["distilbert", "roberta", "tweet-topic"])
 
     args = parser.parse_args()
@@ -137,18 +140,54 @@ def create_model(Y_train, emb_matrix, args):
     model = Sequential()
     model.add(Embedding(num_tokens, embedding_dim, embeddings_initializer=Constant(emb_matrix), trainable=False))
     # model.add(Dense(input_dim=embedding_dim, units=num_labels, activation=args.activation_hidden))
-    # Add LSTM layer
-
-    if args.bidirectional:
+    
+    # Add bidirectional LSTM layer
+    if args.bidirectional and not args.extra_layer:
         model.add(Bidirectional(LSTM(embedding_dim)))
+
+    # Adds the bidirectional LSTM layers and the possibility to add extra layers, 1 or 2.
+    elif args.bidirectional and args.extra_layer:
+        model.add(Bidirectional(LSTM(embedding_dim, return_sequences=True)))
+
+        # Adds dropout layer for first layer if asked
+        if args.dropout:
+            model.add(Dropout(args.dropout))
+        if args.extra_layer > 1:
+            for i in range(args.extra_layer - 1):
+                model.add(Bidirectional(LSTM(embedding_dim, return_sequences=True)))
+                # Adds dropout layer for each layer if asked
+                if args.dropout:
+                    model.add(Dropout(args.dropout))
+        
+        model.add(Bidirectional(LSTM(embedding_dim)))
+
+    # Adds the LSTM layers and the possibility to add extra layers, 1 or 2.
+    elif args.extra_layer and not args.bidirectional:
+        model.add(LSTM(embedding_dim, return_sequences=True))
+
+        # Adds a dropout layer for the first layer if asked
+        if args.dropout:
+            model.add(Dropout(args.dropout))
+
+        if args.extra_layer > 1:
+            for i in range(args.extra_layer - 1):
+                model.add(LSTM(embedding_dim, return_sequences=True))
+
+                # Adds dropout layer for each layer if asked
+                if args.dropout:
+                    model.add(Dropout(args.dropout))
+        model.add(LSTM(embedding_dim))
+
+    # Adds the LSTM layer
     else:
         model.add(LSTM(embedding_dim))
 
-    # Ultimately, end with dense layer with softmax
-    model.add(Dense(input_dim=embedding_dim, units=num_labels, activation=activation))
-
-    if args.dropout:
+    # Adds the last dropout layer if asked
+    if args.dropout and args.extra_layer < 2:
         model.add(Dropout(args.dropout))
+
+    # Ultimately, end with dense layer with the activation function
+    model.add(Dense(input_dim=embedding_dim, units=num_labels, activation=activation))
 
     # Compile model using our settings, check for accuracy
     model.compile(loss=loss_function, optimizer=optim, metrics=["accuracy"])
@@ -207,8 +246,8 @@ def main():
     Y_train_bin = encoder.fit_transform(Y_train)  # Use encoder.classes_ to find mapping back
     Y_dev_bin = encoder.fit_transform(Y_dev)
     if args.transformer:
-        Y_train_bin = Y_train_bin.reshape(-1, 6)
-        Y_dev_bin = Y_dev_bin.reshape(-1, 6)
+        Y_train_bin = Y_train_bin
+        Y_dev_bin = Y_dev_bin
 
         lm = "cardiffnlp/tweet-topic-21-multi"
         tokenizer = AutoTokenizer.from_pretrained(lm)
