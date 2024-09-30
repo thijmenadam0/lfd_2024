@@ -64,6 +64,8 @@ def create_arg_parser():
                         help="Set the patience of early stop")
     parser.add_argument("-o", "--optimizer", default="sgd", choices=["sgd", "adam"],
                         help="Select optimizer (SGD, ADAM)")
+    parser.add_argument("-dr", "--dropout", default=None, type=float,
+                        help="Set a dropout layer")
 
     args = parser.parse_args()
     return args
@@ -139,6 +141,9 @@ def create_model(Y_train, emb_matrix, args):
 
     # Ultimately, end with dense layer with softmax
     model.add(Dense(input_dim=embedding_dim, units=num_labels, activation=activation))
+
+    if args.dropout:
+        model.add(Dropout(args.dropout))
 
     # Compile model using our settings, check for accuracy
     model.compile(loss=loss_function, optimizer=optim, metrics=["accuracy"])
