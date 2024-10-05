@@ -2,24 +2,26 @@
 
 """TODO: add high-level description of this Python script"""
 
-import random as python_random
-import json
 import argparse
-import numpy as np
+import json
 import logging
+import random as python_random
+
+import numpy as np
+from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import LabelBinarizer
+
+import tensorflow as tf
+from tensorflow.keras.layers import TextVectorization, Bidirectional
+from tensorflow.keras.losses import CategoricalCrossentropy
+from tensorflow.keras.optimizers import Adam, SGD
+
 from keras.models import Sequential
 from keras.layers import Dense, Embedding, LSTM, Dropout
 from keras.initializers import Constant
-from keras.src.optimizers import Adam
-from sklearn.metrics import accuracy_score
-from sklearn.preprocessing import LabelBinarizer
-from tensorflow.keras.optimizers import SGD
-from tensorflow.keras.layers import TextVectorization, Bidirectional
-import tensorflow as tf
-from transformers import TFAutoModelForSequenceClassification
-from transformers import AutoTokenizer
-from tensorflow.keras.losses import CategoricalCrossentropy
-from tensorflow.keras.optimizers import Adam
+
+from transformers import TFAutoModelForSequenceClassification, AutoTokenizer
+
 
 # Setup logging configuration
 logging.basicConfig(filename='/content/gdrive/MyDrive/AS3/results.log', level=logging.INFO,
