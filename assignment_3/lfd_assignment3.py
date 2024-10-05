@@ -121,15 +121,14 @@ def create_model(Y_train, emb_matrix, args):
     # Define hyperparameter settings
     learning_rate = args.learning_rate
     loss_function = args.loss_function
-    decay_rate = learning_rate/args.epochs
     momentum = args.momentum
     activation = args.activation
 
     # Define the optimizer
-    optim = SGD(learning_rate=learning_rate, decay=decay_rate,
+    optim = SGD(learning_rate=learning_rate,
                 momentum=momentum, nesterov=False)
     if args.optimizer == "adam":
-        optim = Adam(learning_rate=learning_rate, decay=decay_rate)
+        optim = Adam(learning_rate=learning_rate)
 
 
     # Take embedding dim and size from emb_matrix
