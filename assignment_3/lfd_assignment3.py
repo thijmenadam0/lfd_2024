@@ -22,7 +22,6 @@ from keras.initializers import Constant
 
 from transformers import TFAutoModelForSequenceClassification, AutoTokenizer
 
-
 # Setup logging configuration
 logging.basicConfig(filename='/content/gdrive/MyDrive/AS3/results.log', level=logging.INFO,
                     format='%(asctime)s - %(message)s')
@@ -76,7 +75,8 @@ def create_arg_parser():
                         help="Set a dropout layer")
     parser.add_argument("-ex", "--extra_layer", default=0, type=int, choices=[1, 2],
                         help="Set an amount of extra layers, max 2 extra layers, keeps the same settings as the base layer.")
-    parser.add_argument("-tr", "--transformer", default=None, choices=["distilbert", "roberta", "electra"])
+
+    parser.add_argument("-tr", "--transformer", default=None, choices=["distilbert", "roberta", "electra", "deberta"])
 
     args = parser.parse_args()
     return args
@@ -141,7 +141,7 @@ def create_model(Y_train, emb_matrix, args):
     model = Sequential()
     model.add(Embedding(num_tokens, embedding_dim, embeddings_initializer=Constant(emb_matrix), trainable=False))
     # model.add(Dense(input_dim=embedding_dim, units=num_labels, activation=args.activation_hidden))
-    
+
     # Add bidirectional LSTM layer
     if args.bidirectional and not args.extra_layer:
         model.add(Bidirectional(LSTM(embedding_dim)))
@@ -159,7 +159,7 @@ def create_model(Y_train, emb_matrix, args):
                 # Adds dropout layer for each layer if asked
                 if args.dropout:
                     model.add(Dropout(args.dropout))
-        
+
         model.add(Bidirectional(LSTM(embedding_dim)))
 
     # Adds the LSTM layers and the possibility to add extra layers, 1 or 2.
@@ -237,13 +237,14 @@ def predict_transformers(model, tokens_dev, Y_dev_bin):
     log_and_print("Accuracy on own {1} set: {0}".format(round(accuracy_score(Y_test, Y_pred), 3), "dev"))
 
 
-def compile_transformer(lm):
+def compile_transformer(lm, args):
     """
     Compile transformer model
     """
+    learning_rate = args.learning_rate
     model = TFAutoModelForSequenceClassification.from_pretrained(lm, num_labels=6)
     loss_function = CategoricalCrossentropy(from_logits=True)
-    optim = Adam(learning_rate=5e-5)
+    optim = Adam(learning_rate=learning_rate)
     model.compile(loss=loss_function, optimizer=optim, metrics=["accuracy"])
 
     return model
@@ -276,6 +277,8 @@ def main():
             lm = "google/electra-small-discriminator"
         elif args.transformer == "roberta":
             lm = "FacebookAI/roberta-base"
+        elif args.transformer == "deberta":
+            lm = "microsoft/deberta-v3-base"
         else:
             lm = "distilbert/distilbert-base-cased"
         tokenizer = AutoTokenizer.from_pretrained(lm)
@@ -284,9 +287,9 @@ def main():
         transformer_tokens_dev = tokenizer(X_dev, padding=True, max_length=100,
                                            truncation=True, return_tensors="np").data
 
-        model = compile_transformer(lm)
-        model.fit(transformer_tokens_train, Y_train_bin, verbose=1, epochs=1,
-                  batch_size=8, validation_data=(transformer_tokens_dev, Y_dev_bin))
+        model = compile_transformer(lm, args)
+        model.fit(transformer_tokens_train, Y_train_bin, verbose=1, epochs=args.epochs,
+                  batch_size=args.batch_size, validation_data=(transformer_tokens_dev, Y_dev_bin))
         predict_transformers(model, transformer_tokens_dev, Y_dev_bin)
 
         # Do predictions on specified test set
