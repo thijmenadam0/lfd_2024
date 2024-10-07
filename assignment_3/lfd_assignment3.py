@@ -8,7 +8,7 @@ import logging
 import random as python_random
 
 import numpy as np
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, f1_score
 from sklearn.preprocessing import LabelBinarizer
 
 import tensorflow as tf
@@ -222,6 +222,8 @@ def test_set_predict(model, X_test, Y_test, ident):
     # If you have gold data, you can calculate accuracy
     Y_test = np.argmax(Y_test, axis=1)
     log_and_print("Accuracy on own {1} set: {0}".format(round(accuracy_score(Y_test, Y_pred), 3), ident))
+    log_and_print("f1 score on own {1} set: {0}".format(round(f1_score(Y_test, Y_pred, average="macro"), 3), ident))
+
 
 
 def predict_transformers(model, tokens_dev, Y_dev_bin):
@@ -235,6 +237,8 @@ def predict_transformers(model, tokens_dev, Y_dev_bin):
     # If you have gold data, you can calculate accuracy
     Y_test = np.argmax(Y_dev_bin, axis=1)
     log_and_print("Accuracy on own {1} set: {0}".format(round(accuracy_score(Y_test, Y_pred), 3), "dev"))
+    log_and_print("f1 score on own {1} set: {0}".format(round(f1_score(Y_test, Y_pred, average="macro"), 3), "dev"))
+
 
 
 def compile_transformer(lm, args):
