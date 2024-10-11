@@ -224,9 +224,7 @@ def test_set_predict(model, X_test, Y_test, ident):
     log_and_print("Accuracy on own {1} set: {0}".format(round(accuracy_score(Y_test, Y_pred), 3), ident))
     log_and_print("f1 score on own {1} set: {0}".format(round(f1_score(Y_test, Y_pred, average="macro"), 3), ident))
 
-
-
-def predict_transformers(model, tokens_dev, Y_dev_bin):
+def predict_transformers(model, tokens_dev, Y_dev_bin, ident):
     """
     Create prediction for the transformer
     """
@@ -236,8 +234,8 @@ def predict_transformers(model, tokens_dev, Y_dev_bin):
     Y_pred = np.argmax(Y_pred, axis=1)
     # If you have gold data, you can calculate accuracy
     Y_test = np.argmax(Y_dev_bin, axis=1)
-    log_and_print("Accuracy on own {1} set: {0}".format(round(accuracy_score(Y_test, Y_pred), 3), "dev"))
-    log_and_print("f1 score on own {1} set: {0}".format(round(f1_score(Y_test, Y_pred, average="macro"), 3), "dev"))
+    log_and_print("Accuracy on own {1} set: {0}".format(round(accuracy_score(Y_test, Y_pred), 3), ident))
+    log_and_print("f1 score on own {1} set: {0}".format(round(f1_score(Y_test, Y_pred, average="macro"), 3), ident))
 
 
 
@@ -294,7 +292,7 @@ def main():
         model = compile_transformer(lm, args)
         model.fit(transformer_tokens_train, Y_train_bin, verbose=1, epochs=args.epochs,
                   batch_size=args.batch_size, validation_data=(transformer_tokens_dev, Y_dev_bin))
-        predict_transformers(model, transformer_tokens_dev, Y_dev_bin)
+        predict_transformers(model, transformer_tokens_dev, Y_dev_bin, "dev")
 
         # Do predictions on specified test set
         if args.test_file:
@@ -304,7 +302,7 @@ def main():
             transformer_tokens_test = tokenizer(X_test, padding=True, max_length=100,
                                                 truncation=True, return_tensors="np").data
             # Finally do the predictions
-            test_set_predict(model, transformer_tokens_test, Y_test_bin, "test")
+            predict_transformers(model, transformer_tokens_test, Y_test_bin, "test")
 
 
     else:
