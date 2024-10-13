@@ -1,6 +1,15 @@
 #!/usr/bin/env python
 
-"""TODO: add high-level description of this Python script"""
+"""
+This script allows users to select a machine learning algorithm, relevant
+hyperparameters and features to train and evaluate the model. Various arguments
+can be supplied by the user to select data or to show a confusion matrix.
+
+This script is intended to run through Google Colab and assumes that it is
+stored along with the used data at /content/gdrive/MyDrive/AS3.
+In addition the requirements specified in requirements.txt have to be installed
+in the notebook.
+"""
 
 import argparse
 import json
@@ -27,7 +36,8 @@ logging.basicConfig(filename='/content/gdrive/MyDrive/AS3/results.log', level=lo
                     format='%(asctime)s - %(message)s')
 
 
-# Custom function to log and print
+# Custom function to log and print so we don't have to write all parameters
+# down each run.
 def log_and_print(message, printed=True):
     """Logs a message and prints it to the console."""
     logging.info(message)
@@ -140,7 +150,6 @@ def create_model(Y_train, emb_matrix, args):
     # Now build the model
     model = Sequential()
     model.add(Embedding(num_tokens, embedding_dim, embeddings_initializer=Constant(emb_matrix), trainable=False))
-    # model.add(Dense(input_dim=embedding_dim, units=num_labels, activation=args.activation_hidden))
 
     # Add bidirectional LSTM layer
     if args.bidirectional and not args.extra_layer:
@@ -196,9 +205,7 @@ def create_model(Y_train, emb_matrix, args):
 
 
 def train_model(model, X_train, Y_train, X_dev, Y_dev, args):
-    """Train the model here. Note the different settings you can experiment with!"""
-    # Potentially change these to cmd line args again
-    # And yes, don"t be afraid to experiment!
+    """Train the LSTM model."""
     verbose = 1
     batch_size = args.batch_size
     epochs = args.epochs
@@ -224,24 +231,23 @@ def test_set_predict(model, X_test, Y_test, ident):
     log_and_print("Accuracy on own {1} set: {0}".format(round(accuracy_score(Y_test, Y_pred), 3), ident))
     log_and_print("f1 score on own {1} set: {0}".format(round(f1_score(Y_test, Y_pred, average="macro"), 3), ident))
 
+
 def predict_transformers(model, tokens_dev, Y_dev_bin, ident):
     """
-    Create prediction for the transformer
+    Create prediction for the transformer model.
     """
     # Get predictions
     Y_pred = model.predict(tokens_dev)["logits"]
     # Finally, convert to numerical labels to get scores with sklearn
     Y_pred = np.argmax(Y_pred, axis=1)
-    # If you have gold data, you can calculate accuracy
     Y_test = np.argmax(Y_dev_bin, axis=1)
     log_and_print("Accuracy on own {1} set: {0}".format(round(accuracy_score(Y_test, Y_pred), 3), ident))
     log_and_print("f1 score on own {1} set: {0}".format(round(f1_score(Y_test, Y_pred, average="macro"), 3), ident))
 
 
-
 def compile_transformer(lm, args):
     """
-    Compile transformer model
+    Compile transformer model.
     """
     learning_rate = args.learning_rate
     model = TFAutoModelForSequenceClassification.from_pretrained(lm, num_labels=6)
@@ -325,6 +331,7 @@ def main():
             # Finally do the predictions
             test_set_predict(model, X_test_vect, Y_test_bin, "test")
 
+    # Compile used args for logging.
     all_args = " \\\n".join([f" --{key}={value}" for key, value in vars(args).items() if value])
     log_and_print(f"Used settings:\n{all_args}", False)
     log_and_print(f"Model construction:\n{model.layers}\n", False)
